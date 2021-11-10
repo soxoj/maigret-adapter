@@ -1,21 +1,15 @@
-#!/usr/bin/env python3
 import sys
+from typing import List
 
 from aiohttp import web
 from aiohttp.web import HTTPNotFound
 
+
 __version__ = "0.0.1"
 
 
-class TestService:
-    def check(self, method, identifier):
-        result = {'status': None}
-
-        if identifier == "found":
-            result['status'] = 'found'
-            result['username'] = 'test'
-
-        return result
+class Site:
+    tags: List
 
 
 class MaigretAdapterServer:
@@ -50,27 +44,44 @@ class MaigretAdapterServer:
         """
         data = {}
         data.update(kwargs)
+
         self.services[name] = data
 
     async def status(self, request):
         """
             Text status answer
         """
-        return web.Response(text=f'Maigret adapter v{__version__}')
+        data = {
+            'maigret-adapter': __version__,
+            'using': '/check/{service}/{site}/{identifier}',
+            'services': [s for s in self.services.keys()],
+        }
 
-    async def make_data_json(self, request):
+        return web.json_response(data)
+
+    async def site_list(self, request):
         """
             Make a valid data JSON
+            for site of the specified service
         """
-        result = {}
-        for name, data in self.services.items():
-            result[name] = {
-                'tags': data.get('tags'),
-                'urlMain': data.get('url'),
-                'url': f'{self.addr}/check/{name}/{{username}}',
+        service = request.match_info.get('service')
+
+        if not service in self.services:
+            return web.json_response(self.make_answer(err='no such service'))
+
+        service_data = self.services[service]
+
+        sites = {}
+
+        for name in service_data['service'].sites:
+            sites[name] = {
+                'tags': service_data.get('tags'),
+                'urlMain': service_data.get('url'),
+                'url': f'{self.addr}/check/{service}/{name}/{{username}}',
                 'checkType': 'status',
             }
-        return web.json_response({'sites': result})
+
+        return web.json_response({'sites': sites})
 
     async def check(self, request):
         """
@@ -79,6 +90,7 @@ class MaigretAdapterServer:
         result = {}
 
         service = request.match_info.get('service')
+        site = request.match_info.get('site')
         identifier = request.match_info.get('identifier')
 
         if not identifier:
@@ -87,10 +99,9 @@ class MaigretAdapterServer:
             result = self.make_answer(err='No service was specified')
         elif not self.services.get(service):
             result = self.make_answer(err='Unsupported service')
-        # else:
         else:
-            func = self.services[service]['func']
-            service_result = func('', identifier)
+            s = self.services[service]['service']
+            service_result = s.check('', identifier)
 
             if not service_result['status']:
                 raise HTTPNotFound()
@@ -107,17 +118,13 @@ class MaigretAdapterServer:
 
         routes = [
             web.get('/', self.status),
-            web.get('/maigret_data.json', self.make_data_json),
-            web.get('/check/{service}/{identifier}', self.check),
+            web.get('/sites/{service}', self.site_list),
+            web.get('/check/{service}/{site}/{identifier}', self.check),
         ]
+
         app.add_routes(routes)
+
         if debug:
             app.add_routes([web.get('/exit', lambda _: sys.exit(0))])
+
         web.run_app(app)
-
-
-if __name__ == '__main__':
-    address = 'http://localhost:8080'
-    server = MaigretAdapterServer(address)
-    server.register_service('example', tags=['tag'], url='http://example.com', func=TestService().check)
-    server.start(debug=True)
