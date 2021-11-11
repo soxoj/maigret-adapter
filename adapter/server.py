@@ -8,10 +8,6 @@ from aiohttp.web import HTTPNotFound
 __version__ = "0.0.1"
 
 
-class Site:
-    tags: List
-
-
 class MaigretAdapterServer:
     """
         HTTP server with maigret-compatible interface
@@ -73,11 +69,11 @@ class MaigretAdapterServer:
 
         sites = {}
 
-        for name in service_data['service'].sites:
+        for name, site in service_data['service'].sites.items():
             sites[name] = {
                 'tags': service_data.get('tags'),
                 'urlMain': service_data.get('url'),
-                'url': f'{self.addr}/check/{service}/{name}/{{username}}',
+                'url': f'http://{self.addr}/check/{service}/{name}/{{username}}',
                 'checkType': 'status',
             }
 
@@ -90,7 +86,7 @@ class MaigretAdapterServer:
         result = {}
 
         service = request.match_info.get('service')
-        site = request.match_info.get('site')
+        sitename = request.match_info.get('site')
         identifier = request.match_info.get('identifier')
 
         if not identifier:
@@ -101,9 +97,10 @@ class MaigretAdapterServer:
             result = self.make_answer(err='Unsupported service')
         else:
             s = self.services[service]['service']
-            service_result = s.check('', identifier)
+            site = s.sites[sitename]
+            service_result = s.check(site, identifier)
 
-            if not service_result['status']:
+            if not service_result.get('status'):
                 raise HTTPNotFound()
 
             result = self.make_answer(res=service_result)
@@ -127,4 +124,6 @@ class MaigretAdapterServer:
         if debug:
             app.add_routes([web.get('/exit', lambda _: sys.exit(0))])
 
-        web.run_app(app)
+        host, port = self.addr.split(':')
+
+        web.run_app(app, host=host, port=port)
