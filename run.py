@@ -4,9 +4,9 @@ from integrations import *
 
 
 if __name__ == '__main__':
-    server = MaigretAdapterServer('localhost:8080')
+    server = MaigretAdapterServer('0.0.0.0:8080')
 
-    # test service    
+    # test service
     server.register_service(
         name='test_service',
         tags=['test'],
@@ -14,7 +14,7 @@ if __name__ == '__main__':
         service=TestService()
     )
 
-    # malcat service    
+    # malcat service
     server.register_service(
         name='mailcat',
         tags=['email'],

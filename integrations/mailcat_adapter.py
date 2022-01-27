@@ -1,7 +1,7 @@
 from typing import List
-import requests
+import aiohttp
 
-from .mailcat import CHECKERS, uaLst
+from .mailcat.mailcat import CHECKERS, uaLst
 
 from .adapter import Service, Site
 
@@ -20,13 +20,13 @@ def from_func_list(func_list) -> List[Site]:
 
 class MailcatService(Service):
     def __init__(self):
-        self.session = requests.Session
+        self.session = aiohttp.ClientSession
         self.sites = from_func_list(CHECKERS)
 
-    def check(self, site, username):
+    async def check(self, site, username):
         result = {'status': None}
 
-        check_result = site.check(username, self.session)
+        check_result = await site.check(username, self.session)
 
         if check_result:
             result.update(check_result)
