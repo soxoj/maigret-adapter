@@ -49,7 +49,7 @@ class MaigretAdapterServer:
         """
         data = {
             'maigret-adapter': __version__,
-            'using': '/check/{service}/{site}/{identifier}',
+            'usage': '/check/{service}/{site}/{identifier}',
             'services': [s for s in self.services.keys()],
         }
 

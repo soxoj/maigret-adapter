@@ -1,8 +1,22 @@
-from .adapter import Service
+from typing import List, Dict
+
+from .adapter import Service, Site
+
+
+def from_list(sites_list) -> List[Site]:
+    sites = {}
+
+    for f in sites_list:
+        name = f
+        site = Site(name)
+        sites[name] = site
+
+    return sites
 
 
 class TestService(Service):
-    sites = ['test_site1', 'test_site2']
+    def __init__(self):
+        self.sites = from_list(['test_site1', 'test_site2'])
 
     def check(self, method, identifier):
         result = {'status': None}
