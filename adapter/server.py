@@ -98,7 +98,7 @@ class MaigretAdapterServer:
         else:
             s = self.services[service]['service']
             site = s.sites[sitename]
-            service_result = s.check(site, identifier)
+            service_result = await s.check(site, identifier)
 
             if not service_result.get('status'):
                 raise HTTPNotFound()
